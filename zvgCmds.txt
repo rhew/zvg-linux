@@ -1,0 +1,458 @@
+ZVG Command Set
+
+Documents the low level command set used to talk directly to the ZVG.
+---------------
+
+Document Version:    0.8
+Last updated:        07/31/03
+Author:              Zonn Moore
+Copyright Notice:    Copyright (c) 2002-2003, Zektor, LLC.  All rights reserved.
+
+--------------------------------------------------------------------------
+
+This document describes the command set and operation of the Zektor Vector
+Generator (ZVG).
+
+When the misnamed "COLOR" jumper is installed, the ZVG is a 1284 compliant
+parallel port device. It runs in the ECP mode and must be negotiated to that
+mode using the standard 1284 negotiations (which is outside the scope of this
+document). Once in the ECP mode, the following command set applies.
+
+If the COLOR jumper (which should be named "1284") is not installed, then the
+ZVG will come up in the ECP mode immediately and the following commands can
+be sent without any negotiations, assuming the ECP port on the PC is also to
+the ECP communications mode.
+
+The ZVG has a limited command buffer and does not buffer full screens of vector
+information.  To display a screen of vectors, the ZVG must receive a constant
+stream of vector commands.
+
+The ZVG role is as a vector timer.  Vector slope calculations, vector directions,
+etc. are all precalculated by the PC.
+
+Each vector can be thought of as havning two lengths associated with it.
+A short length, and a long length.  If the following system is used to
+describe a vector:
+
+   xStart, yStart, xEnd, yEnd
+
+where a vector is drawn from xStart, yStart to xEnd, yEnd, then two lengths
+can be extracted from the vector definition:
+
+   xLen = abs( xEnd - xStart)
+   ylen = abs( yEnd - yStart)
+
+The ZVG uses polar coordinates defined as a start X and Y position and an angle
+and length.
+
+For 90 and 45 degree angles, only the direction and length need to be specified.
+For all other angles, the longer of the two lengths (described above) is given,
+along with a ratio of the shorter length divided by the longer length.
+
+The ratio is calculated by dividing the shorter length axis * 65536 by the longer
+length axis.   Or:
+
+   ratio = (shortAxisLen * 65536) / longAxisLen
+
+Where 'ratio' is a 16 bit integer value.
+
+The value 'Ratio' is assumed to be a fixed point fraction, where: 0.0 <= Ratio < 1.0.
+It has an assumed decimal point before the Most Significant Bit.  For commands that
+use a 12 bit ratio, only the upper 12 bits of the 16 bit result are sent.  For
+commands that use an 8 bit ratio, only the upper 8 bits are sent.
+
+Because of rounding errors, the ratio must always have one more bit that the length.
+So for commands that use an 8 bit ratio, only a 7 bit length can be sent.
+
+All vector positions are signed values from the origin of 0,0 -- which is
+set to the center of the screen.
+
+Screen layout is:
+
+                        +599
+                          |
+                          |
+                          |
+                          |0,0
+             -600 --------+-------- +599
+                          |
+                          |
+                          |
+                          |
+                        -600
+                        
+Because of the 3/4 ratio of a standard monitor, it is advisable not to
+send Y positions beyond -472 to +471.
+
+The direction and type of vector being drawn is given as a Vector 'Type' byte.
+This byte encodes the direction of the vector, along with useful information
+such as whether the vector is being drawn at a 45 or 90 degree screen angle.
+
+   +X = Vector is being drawn upward
+   -X = Vector is being drawn downward
+   +Y = Vector is being drawn to the right
+   -Y = Vector is being drawn to the left
+    0 = No X (or Y) movement in this command
+
+The the lower nibble of the command byte (given as 'tttt') is defined as follows:
+
+   0000 = 45 Angle +X +Y		upward right
+   0001 = 45 Angle +X -Y		downward right
+   0010 = 45 Angle -X +Y		upward left
+   0011 = 45 Angle -X -Y		downward left
+   
+   0100 = 90 Angle +X  0		horizontal right
+   0101 = 90 Angle -X  0		horizontal left
+   0110 = 90 Angle  0 +Y		vertical upward
+   0111 = 90 Angle  0 -Y                vertical downward
+   
+   1000 = Ratio Angle, Len=X, +X +Y     Length of X given, ratio of Y, upward right
+   1001 = Ratio Angle, Len=X, +X -Y     Length of X given, ratio of Y, upward right
+   1010 = Ratio Angle, Len=X, -X +Y     Length of X given, ratio of Y, upward right
+   1011 = Ratio Angle, Len=X, -X -Y     Length of X given, ratio of Y, upward right
+   1100 = Ratio Angle, Len=Y, +X +Y     Length of X given, ratio of Y, upward right
+   1101 = Ratio Angle, Len=Y, +X -Y     Length of X given, ratio of Y, upward right
+   1110 = Ratio Angle, Len=Y, -X +Y     Length of X given, ratio of Y, upward right
+   1111 = Ratio Angle, Len=Y, -X -Y     Length of X given, ratio of Y, upward right
+
+The "draw point" commands that include a length, are used to draw a point
+a relative distance from the current position.  They're similar to a draw
+vector command, except only a point is drawn at the endpoint of the would
+be vector.
+
+The following commands are broken down by their upper nibble.
+
+List of commands:
+------------------------------------------------------------------------------
+
+0000 - Draw a point.
+       Uses 45 or 90 degree offset from current screen position.
+       Includes 11 bit vector length, but does not include ratio.
+       Uses previous vector's color.
+
+0000 0ttt - Type of vector. Indicates angle and direction of vector.
+0000 0lll - Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0000 - Draw a point.
+       Uses an odd degree offset from current screen position.
+       Includes 11 bit vector length, and 12 bit slope ratio.
+       Uses previous vector's color.
+
+0000 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rrrr - Upper 8 bits of Slope Ratio.
+rrrr 0lll - Lower 4 bits of Slope Ratio, Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0001 - Draw a vector in an angle of 45 or 90 degrees to screen.
+       Uses current screen position as starting position.
+       Includes 11 bit vector length, but does not include ratio.
+       Uses previous vector's color.
+
+0001 0ttt - Type of vector. Indicates angle and direction of vector.
+0000 0lll - Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0001 - Draw a vector in an angle other than 45 or 90 degrees to screen.
+       Uses current screen position as starting position.
+       Includes 11 bit vector length, also includes 12 bit slope ratio.
+       Uses previous vector's color.
+
+0001 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rrrr - Upper 8 bits of Slope Ratio.
+rrrr 0lll - Lower 4 bits of Slope Ratio, Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0010 - Draw a point.
+       Uses 45 or 90 degree offset from current screen position.
+       Includes 8 bit vector length, but does not include ratio.
+       Uses previous vector's color.
+
+0010 0ttt - Type of vector. Indicates angle and direction of vector.
+llll llll - 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0010 - Draw a point.
+       Uses an odd degree offset from current screen position.
+       Includes 7 bit vector length, and 8 bit slope ratio.
+       Uses previous vector's color.
+
+0010 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rrrr - 8 bits of Slope Ratio.
+0lll llll - 7 bits of Vector Length (top bit *must* be zero!).
+------------------------------------------------------------------------------
+
+0011 - Draw a vector in an angle of 45 or 90 degrees to screen.
+       Uses current screen position as starting position.
+       Includes 8 bit vector length, but does not include ratio.
+       Uses previous vector's color.
+
+0011 0ttt - Type of vector. Indicates angle and direction of vector.
+llll llll - 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0011 - Draw a vector in an angle other than 45 or 90 degrees to screen.
+       Uses current screen position as starting position.
+       Includes 7 bit vector length, and 8 bit slope ratio.
+       Uses previous vector's color.
+
+0011 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rrrr - 8 bits of Slope Ratio.
+0lll llll - 7 bits of Vector Length (top bit *must* be zero!).
+------------------------------------------------------------------------------
+
+0100 - Draw a point.
+       Uses 45 or 90 degree offset from current screen position.
+       Includes 11 bit vector length, but does not include ratio.
+       Includes vector's color.
+
+0100 0ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+0000 0lll - Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0100 - Draw a point.
+       Uses an odd degree offset from current screen position.
+       Includes 11 bit vector length, and 12 bit slope ratio.
+       Includes vector's color.
+
+0100 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+rrrr rrrr - Upper 8 bits of Slope Ratio.
+rrrr 0lll - Lower 4 bits of Slope Ratio, Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0101 - Draw a vector in an angle of 45 or 90 degrees to screen.
+       Uses current screen position as starting position.
+       Includes 11 bit vector length, but does not include ratio.
+       Includes vector's color.
+
+0101 0ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+0000 0lll - Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0101 - Draw a vector in an angle other than 45 or 90 degrees to screen.
+       Uses current screen position as starting position.
+       Includes 11 bit vector length, also includes 12 bit slope ratio.
+       Includes vector's color.
+
+0101 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+rrrr rrrr - Upper 8 bits of Slope Ratio.
+rrrr 0lll - Lower 4 bits of Slope Ratio, Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0110 - Draw a point.
+       Uses 45 or 90 degree offset from current screen position.
+       Includes 8 bit vector length, but does not include ratio.
+       Includes vector's color.
+
+0110 0ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+llll llll - 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0110 - Draw a point.
+       Uses an odd degree offset from current screen position.
+       Includes 7 bit vector length, and 8 bit slope ratio.
+       Includes vector's color.
+
+0110 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+rrrr rrrr - 8 bits of Slope Ratio.
+0lll llll - 7 bits of Vector Length (top bit *must* be zero!).
+------------------------------------------------------------------------------
+
+0111 - Draw a vector in an angle of 45 or 90 degrees to screen.
+       Uses current screen position as starting position.
+       Includes 8 bit vector length, but does not include ratio.
+       Includes vector's color.
+
+0111 0ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+llll llll - 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+0111 - Draw a vector in an angle other than 45 or 90 degrees to screen.
+       Uses current screen position as starting position.
+       Includes 7 bit vector length, also includes 8 bit slope ratio.
+       Includes vector's color.
+
+0110 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+rrrr rrrr - 8 bits of Slope Ratio.
+0lll llll - 7 bits of Vector Length (top bit *must* be zero!).
+------------------------------------------------------------------------------
+
+1000 - Draw a point using absolute addressing.
+       Use previous vector's color.
+
+1000 0000 - Lower bits of command must be set to 0's.
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 4 bits of X position, Upper 4 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+------------------------------------------------------------------------------
+
+1001 - Draw a vector in an angle of 45 or 90 degrees to screen.
+       Includes X/Y starting position.
+       Includes 11 bit vector length, but does not include ratio.
+       Uses previous vector's color.
+
+1001 0ttt - Type of vector. Indicates angle and direction of vector.
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 4 bits of X position, Upper 4 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+0000 0lll - Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+1001 - Draw a vector in an angle other than 45 or 90 degrees to screen.
+       Includes X/Y starting position.
+       Includes 11 bit vector length, also includes 12 bit slope ratio.
+       Uses previous vector's color.
+
+1001 1ttt - Type of vector. Indicates angle and direction of vector.
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 4 bits of X position,  Upper 4 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+rrrr rrrr - Upper 8 bits of Slope Ratio.
+rrrr 0lll - Lower 4 bits of Slope Ratio, Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+1010 - *** Reserved ***
+
+------------------------------------------------------------------------------
+1011 - Draw a vector in an angle of 45 or 90 degrees to screen.
+       Includes X/Y starting position.
+       Includes 8 bit vector length, but does not include ratio.
+       Uses previous vector's color.
+
+1011 0ttt - Type of vector. Indicates angle and direction of vector.
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 4 bits of X position, Upper 4 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+1lll llll - 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+1011 - Draw a vector in an angle other than 45 or 90 degrees to screen.
+       Includes X/Y starting position.
+       Includes 7 bit vector length, also includes 8 bit slope ratio.
+       Uses previous vector's color.
+
+1011 1ttt - Type of vector. Indicates angle and direction of vector.
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 4 bits of X position,  Upper 4 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+rrrr rrrr - Upper 8 bits of Slope Ratio.
+0lll llll - 7 bits of Vector Length (top bit *must* be zero!).
+------------------------------------------------------------------------------
+
+1100 - Draw a point.
+       Includes vector's color.
+
+1100 0000 - Lower bits of command must be 0s.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 8 bits of X position, Upper 8 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+------------------------------------------------------------------------------
+
+1101 - Draw a vector in an angle of 45 or 90 degrees to screen.
+       Includes X/Y starting position.
+       Includes 11 bit vector length, but does not include ratio.
+       Includes vector's color.
+
+1101 0ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 4 bits of X position, Upper 4 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+0000 0lll - Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+1101 - Draw a vector in an angle other than 45 or 90 degrees to screen.
+       Includes X/Y starting position.
+       Includes 11 bit vector length, also includes 12 bit slope ratio.
+       Includes vector's color.
+
+1101 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 4 bits of X position,  Upper 4 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+rrrr rrrr - Upper 8 bits of Slope Ratio.
+rrrr 0lll - Lower 4 bits of Slope Ratio, Upper 3 bits of Vector Length.
+llll llll - Lower 8 bits of Vector Length.
+------------------------------------------------------------------------------
+1110 xxxx - Extended commands.
+
+These commands are exceptions to the standard vector commands, and are used
+to set ZVG parameters, etc.
+
+1110 0000 - NOP		 Do nothing
+1110 0001 - BLINK        Blink VTG LED
+1110 0010 - ZSHIFT	 Set Z-Shift
+1110 0011 - OSHOOT	 Set Overshoot
+1110 0100 - JUMP	 Set JUMP factor
+1110 0101 - SETTLE	 Set min Settling time
+1110 0110 - POINT_I	 Set POINT Intensity
+1110 0111 - MIN_I	 Set MIN DAC Intensity
+1110 1000 - MAX_I	 Set MAX DAC Intensity
+1110 1001 - SCALE	 Set Scale size
+1110 1010 - SAVE_EE	 Save current setting to EEPROM
+1110 1011 - LOAD_EE	 Restore current setting from EEPROM
+1110 1100 - READ_MON	 Send current monitor settings to PC
+1110 1101 - RESET_MON	 Reset monitor to factory default settings
+1110 1110 - READ_SPD	 Read speed table values
+1110 1111 - CENTER	 Center beam
+
+------------------------------------------------------------------------------
+
+1111 - Draw a vector in an angle of 45 or 90 degrees to screen.
+       Includes X/Y starting position.
+       Includes 8 bit vector length, but does not include ratio.
+       Includes vector's color.
+
+1111 0ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 4 bits of X position, Upper 4 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+llll llll - 8 bits of Vector Length.
+------------------------------------------------------------------------------
+
+1111 - Draw a vector in an angle other than 45 or 90 degrees to screen.
+       Includes X/Y starting position.
+       Includes 7 bit vector length, also includes 8 bit slope ratio.
+       Includes vector's color.
+
+1111 1ttt - Type of vector. Indicates angle and direction of vector.
+rrrr rggg - Upper 8 bits of color
+gggb bbbb - Lower 8 bits of color
+xxxx xxxx - Lower 8 bits of X position.
+xxxx yyyy - Upper 4 bits of X position,  Upper 4 bits of Y position.
+yyyy yyyy - Lower 8 bits of Y position.
+rrrr rrrr - 8 bits of Slope Ratio.
+0lll llll - 7 bits of Vector Length (top bit *must* be zero!).

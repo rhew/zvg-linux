@@ -1,0 +1,239 @@
+       COMPILING zvgTweak AND frmDemo
+       ------------------------------
+
+From the appropriate directory, (the same directory the make file is
+located) type:
+
+   make -f zvgTweak.mak,   or
+   make -f frmDemo.mak
+
+Binaries will be placed in the subdirectory '..\bin'
+
+The above assumes the DJGPP compiler has been setup for compiling MAME.
+
+
+       DOCUMENTATION FOR CALLING ZVGFRAME.C ROUTINES
+       ---------------------------------------------
+
+***** Environment variable settings *****
+
+Before using the ZVG a environment variable 'ZVGPORT=' must be setup:
+
+   ZVGPORT=Pxxx Dx[,x] Ix Mx
+
+   '[]' indicates optional parameters.
+
+Where:
+   Pxxx = Port address of ZVG's ECP port.  This parameter must exist.
+          Address is in hexadecimal.
+
+   Dx,x = DMA channel and DMA mode.
+          The DMA mode ",x" is optional is defined:
+	     0=No DMA (DMA disabled)
+	     1=Demand Mode (This is the default if not given)
+	     2=Single Mode (to be tried if '1' doesn't work)
+
+   Ix   = Interrupt level of the ECP port.
+
+   Mx   = Monitor control. Sets up monitor orientation and type. Optional
+          if not present defaults to '4'. This is a memory mapped value
+          and is setup by adding the following options together.
+          
+             1  = Flip X
+             2  = Flip Y
+             4  = Enable spotkill logic
+             8  = B&W monitor
+             16 = Disable Overscan
+          
+          The following are some common examples of 'M' command values:
+             M0  = Sega G08 (Color, Spotkill logic disabled, no flips).
+             M4  = WG6101 or Amplifone (Color, Spotkill logic enabled).
+             M29 = Vectrex (B&W, Flip X, Spotkill logic enabled, No Overscan).
+             M12 = G05 or 19V2000 (B&W, Spotkill logic enabled).
+
+Typical examples:
+   
+   set ZVGPORT=P378 D3 I7 M4
+
+Indicate port 378 is being used and is set to DMA=3 and IRQ=7.
+Defaults to DMA Mode 1. Monitor type is a WG6101 or Amplifone color monitor.
+
+Typically DMA mode '1' (default) should be used, if this doesn't work,
+try DMA mode 2:
+
+   set ZVGPORT=P378 D3,2 I7
+
+if it still doesn't work, disable DMA by setting mode 0:
+
+   set ZVGPORT=P378 D3,0 I7
+
+If your cabinet uses a mirror, or a vertical monitor rotated the "other" way,
+use the 'M' control to correct for it.  WG, Amplifone and G05 need spotkiller
+handling, Sega (G08) and Vectrex don't.
+
+***** ZVGFRAME.C Routines *****
+
+uint zvgFrameOpen( void)
+
+Called to initialize the ZVG encoder/driver engine.  This routine reads the
+'ZVGPORT=' variable and sets up DMA / IRQ and DMA memory buffers. It also
+initializes the timer routines.
+
+Returns an error if anything went wrong.  A call to 'zvgError( uint err)'
+will display what went wrong.
+-----
+
+void zvgFrameClose( void)
+
+The opposite of 'zvgFrameOpen()', should be called before returning to DOS.
+Releases DMA memory, restores the hardware timers, etc.
+-----
+
+void zvgFrameSetColor( uint color)
+
+Set the color of vectors drawn following this command. The 'zvgFrameSetColor()'
+routine sets the color of the vectors using the internal color format of
+the ZVG where the 16 bits are defined as:
+
+   rrrrrggggggbbbbb
+   
+   where:
+      rrrrr  = 5 bits of RED,   00000 =No RED,   11111 =Max RED
+      gggggg = 6 bits of GREEN, 000000=No GREEN, 111111=Max GREEN
+      bbbbb  = 5 bits of BLUE,  00000 =No BLUE,  11111 =Max BLUE
+      
+   The RED and BLUE values are treated as 6 bit values with an assumed
+   lower bit of 0.
+   
+   On a B&W monitor the green bits are used as the intensity bits.
+
+No Color to B&W conversion is done when calling 'zvgFrameSetColor()'.
+-----
+   
+void zvgFrameSetRGB24( int red, int green, int blue)
+void zvgFrameSetRGB16( int red, int green, int blue)
+void zvgFrameSetRGB15( int red, int green, int blue)
+
+These routines set the color of the vectors drawn after these calls. 
+The color will remain in affect until a new call is made to a color routine.
+The 'RGB' commands will mix down colors to B&W if the monitor type indicates a
+B&W monitor is connected.
+-----
+
+uint zvgFrameVector( int xStart, int yStart, int xEnd, int yEnd)
+
+Send a vector to the ZVG, to send a POINT, xStart == yStart and xEnd == yEnd.
+
+Should be checked for error for possible buffer overflow, etc.
+-----
+
+uint zvgFrameSend( void)
+
+Once all vectors for a frame have sent using 'zvgFrameVector()', this routine is
+called to send the vectors to the ZVG.
+
+If DMA is enabled, this routine will start the DMA and immediatly return to the
+caller. The caller can immediatly start calling the 'zvgFrameVector()' routine
+as the DMA is double buffered.
+
+If DMA is not enabled, the buffer will be sent to the ZVG in polled mode, and
+this routine will not return until the full buffer is sent.
+
+If indicated by the monitor type, this routine will add invisible POINTs to the
+screen to disable the spotkiller if determined spotkiller could possibly be
+activated by frame.
+
+This routine should be error checked.
+-----
+
+void zvgError( uint err)
+
+Display an error returned from the ZVG drivers to the STDOUT.
+-----
+
+void zvgBanner( void)
+
+Display a banner of current state / version of ZVG.
+-----
+
+***** Clipping routines *****
+
+void zvgFrameSetClipWin( int xMin, int yMin, int xMax, int yMax)
+void zvgFrameSetClipOverscan( void)
+void zvgFrameSetClipNoOverscan( void)
+
+A clip box can be setup to clip all vectors sent after the call to the clip
+routine. Previously sent vectors will be unaffected by this call.  All vectors
+after a call to a clip routine will be clipped to the specified window until
+another call to a clip routine is made.
+-----
+
+void zvgFrameSetClipWin( int xMin, int yMin, int xMax, int yMax)
+
+Specify the size of the clipped window.
+-----
+
+void zvgFrameSetClipOverscan( void)
+
+Specify that window is to be clipped at the overscan boudary (1200x944), this is
+the default and largest window allowed.
+-----
+void zvgFrameSetClipNoOverscan( void)
+
+Specify that window is to be clipped at the screens edge 1024x768 (no overscan
+allowed).
+-----
+
+
+***** Routines outside of 'zvgFrame.c' that are useful *****
+
+uint tmrSetFrameRate( uint fps)
+
+Set the frame rate in frames per second.
+-----
+
+uint tmrTestFrame( void)
+
+Returns:
+   0              - Not time for next frame.
+   1              - Time for next frame.
+   Greater than 1 - Frames have been missed.
+-----
+
+void tmrWaitFrame( void)
+
+Does not return until it is time for the next frame to be sent.
+-----
+
+***** Typical calling order *****
+
+{
+   err = zvgFrameOpen();     // be sure to check for errors
+   
+   if (err)
+   {   	zvgError( err);
+   	exit( 0);
+   }
+   	
+   tmrSetFrameRate( 40);     // 40 fps
+
+   while (program running)
+   {
+      // Do game logic...
+      
+      while (vectors to be sent > 0)
+      {
+         // send vector information
+
+         zvgFrameSetRGB24( red, green, blue);       // send color if needed
+         err = zvgFrameVector( xs, ys, xe, ye);     // (check for errors)
+
+         // (change colors and/or change clip window, etc)
+      }
+
+      tmrWaitFrame();         // wait for next frame time
+      err = zvgFrameSend();   // send next frame (check for errors)
+   }
+
+   zvgFrameClose();           // clean up
+}
