@@ -70,7 +70,7 @@ ZvgID_s		ZvgID;
 		#include <unistd.h> // for usleep()
 		#include <pthread.h>
 		
-		enum buffState {ZBUF_EMPTY, ZBUF_FILL, ZBUF_READY, ZBUF_WRITE};
+		typedef enum {ZBUF_EMPTY, ZBUF_FILL, ZBUF_READY, ZBUF_WRITE} buffState;
 		
 		static pthread_mutex_t	zvgMutex = PTHREAD_MUTEX_INITIALIZER;
 		static pthread_t		zvgIOThreadHandle;
