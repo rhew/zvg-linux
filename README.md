@@ -17,6 +17,13 @@ The ZVG Software Development Kit for Linux provides a C interface to the ZVG.
 
 More information is available on the [Zektor ZVG website](http://www.zektor.com/zvg/downloads.htm).
 
+## Linux build instructions
+
+Make sure you have the development libraries for Curses and Threads installed.  Then, from the repository root:
+
+    cmake .
+    make
+
 ## Copyright
 
 The following appears throughout the source code:
