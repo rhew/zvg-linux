@@ -1,5 +1,6 @@
 bin/
 *.a
+*.so
 
 #cmake
 CMakeCache.txt
