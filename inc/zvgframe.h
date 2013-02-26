@@ -33,6 +33,18 @@ extern "C" {
 #include	"timer.h"
 #endif
 
+/* These limits are not checked in the ZVG library. See zvgFrameVector
+ * in zvgframe.c. */
+#define ZVG_X_MIN -512
+#define ZVG_X_MAX  511
+#define ZVG_Y_MAX  383 
+#define ZVG_Y_MIN -384
+
+#define ZVG_X_OVERSCAN_MIN -600
+#define ZVG_X_OVERSCAN_MAX  599
+#define ZVG_Y_OVERSCAN_MAX  471 
+#define ZVG_Y_OVERSCAN_MIN -472
+
 /* Setup some aliases to make the API consistent. */
 
 #define	zvgFrameSetColor( newcolor) \
