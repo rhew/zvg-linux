@@ -17,6 +17,11 @@
 * (c) Copyright 2003-2004, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
 #ifndef _ZVGENC_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include	"zvgenc.h"
 #endif
 
@@ -81,5 +86,9 @@ extern uint zvgFrameSend( void);
 	#else /* DOS */
 	#endif /* OS */
 #endif /* ZVG_IO_THREAD_ENABLED */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _ZVGFRAME_H_ */

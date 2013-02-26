@@ -11,6 +11,10 @@
 *
 * (c) Copyright 2002-2003, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined(WIN32) || defined(linux)
 	typedef struct {
 	  unsigned short offset16;
@@ -65,5 +69,9 @@ typedef struct	IRQ_S
 
 	int				irqCount;		  		// Incremented when IRQ routine executed.
 } Irq_s;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _PIC_H_ */

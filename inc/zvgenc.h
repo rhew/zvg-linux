@@ -13,6 +13,10 @@
 *
 * (c) Copyright 2002-2004, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef _ZSTDDEF_H_
 #include	"zstddef.h"
 #endif
@@ -124,5 +128,9 @@ extern void zvgEncSetRGB15( uint red, uint green, uint blue);
 extern void zvgEncSetClipWin( int xMin, int yMin, int xMax, int yMax);
 extern void zvgEncSetClipOverscan( void);
 extern void zvgEncSetClipNoOverscan( void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

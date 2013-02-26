@@ -10,6 +10,10 @@
 *
 * (c) Copyright 2003-2004, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum TLOGIC_E
 {
 	zFalse = 0,				// Logical False
@@ -46,7 +50,10 @@ typedef	signed short	sshort;
 typedef	signed int		sint;
 typedef	signed long		slong;
 
-#ifndef __cplusplus
+
+#ifdef __cplusplus
+}
+#else
 #ifndef bool
 typedef	unsigned char	bool;
 #endif

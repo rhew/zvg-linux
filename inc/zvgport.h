@@ -11,6 +11,10 @@
 *
 * (c) Copyright 2002-2004, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef _ZSTDDEF_H_
 #include	"zstddef.h"
 #endif
@@ -361,5 +365,9 @@ void movedata(unsigned source_selector, unsigned source_offset,
 	#else /* DOS - not supported */
 	#endif /* OS */
 #endif /* ZVG_IO_THREAD_ENABLED */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _ZVGPORT_H_ */

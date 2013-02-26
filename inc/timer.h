@@ -10,6 +10,10 @@
 *
 * (c) Copyright 2003-2004, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef _ZSTDDEF_H_
 #include	"zstddef.h"
 #endif
@@ -43,4 +47,9 @@ extern Timer_t	tmrRead( void);
 extern bool		tmrTestTicks( Timer_t timer, ulong ticks);
 extern bool		tmrTestms( Timer_t timer, ulong ms);
 extern bool		tmrTestFrameCount( uint frameCount, uint frames);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

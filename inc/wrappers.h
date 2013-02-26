@@ -1,11 +1,14 @@
+#ifndef _WRAPPER_H_INCLUDED_
+#define _WRAPPER_H_INCLUDED_
 /*****************************************************************************
 * Author:  Brent Jarvis
 * Created: Mar 2007
 *
 *****************************************************************************/
 
-#ifndef _WRAPPER_H_INCLUDED_
-#define _WRAPPER_H_INCLUDED_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #if defined(WIN32)
 
@@ -27,5 +30,9 @@
 void movedata(unsigned source_selector, unsigned source_offset,
               unsigned dest_selector, unsigned dest_offset,
               size_t length);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _WRAPPER_H_INCLUDED_ */
