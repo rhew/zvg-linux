@@ -9,6 +9,8 @@ find_package(Threads REQUIRED)
 
 include_directories(inc)
 
+FILE(GLOB LIBZVG_HEADERS "inc/*.h")
+
 set(LIBZVG_SOURCES shared/timer.c shared/zvgban.c shared/zvgenc.c shared/zvgerror.c shared/zvgframe.c shared/zvgport.c shared/wrappers.c)
 add_library(zvg SHARED ${LIBZVG_SOURCES} inc)
 
@@ -22,3 +24,6 @@ install(
     TARGETS frmDemo zvgTweak zvg
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib)
+install(
+    FILES ${LIBZVG_HEADERS}
+    DESTINATION include/zvg)
