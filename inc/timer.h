@@ -13,6 +13,10 @@
 * (c) Copyright 2003-2004, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*************************************************
  *
  *	here are the original functions.  I changed the
@@ -39,4 +43,9 @@ extern int				tmrTestTicks( long long int, int);
 extern int				tmrTestMillis( long long int, int);
 extern int				tmrTestFrameCount( unsigned int, unsigned int);
 extern long long int			tmrGetTicksInFrame();
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

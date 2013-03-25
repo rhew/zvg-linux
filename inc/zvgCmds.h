@@ -12,6 +12,10 @@
 * (c) Copyright 2002-2004, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define		zINIT_COLOR	0x7BEF	// The default color used by the ZVG firmware
 
 // Bitmaps that make up the ZVG vector commands
@@ -47,5 +51,9 @@
 #define		zcREAD_SPD	0xEE		// Read speed table values
 
 #define		zcCENTER	0xEF		// Center beam
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

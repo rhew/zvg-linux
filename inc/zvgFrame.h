@@ -28,6 +28,10 @@
 #include	"timer.h"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Setup some aliases to make the API consistent.
 
 #define	zvgFrameSetColor( newcolor) \
@@ -60,4 +64,9 @@ extern uint zvgFrameOpen( void);
 extern void zvgFrameClose( void);
 extern uint zvgFrameVector( uint xStart, uint yStart, uint xEnd, uint yEnd);
 extern uint zvgFrameSend(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

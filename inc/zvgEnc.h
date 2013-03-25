@@ -17,6 +17,10 @@
 #include	"zstddef.h"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Absolute boundaries of ZVG display's veiwable area
 
 #define	X_MIN			(-512)
@@ -128,5 +132,9 @@ extern void zvgEncSetRGB15( uint, uint, uint);
 extern void zvgEncSetClipWin( int, int, int, int);
 extern void zvgEncSetClipOverscan( void);
 extern void zvgEncSetClipNoOverscan( void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -15,6 +15,10 @@
 #include	"zstddef.h"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define	ZVG_MAX_BFRSZ			256		// maximum number of bytes the ZVG can return
 
 #define	ZVG_MAX_IDSZ			17			// size of ID strings in 'zvgReadDeviceID()' strings
@@ -297,5 +301,9 @@ extern void zvgDmaClearBfr( void);
 // Linux Port Macros , using sys/io.h
 #define inportb(PortAddress)		inb(PortAddress)
 #define outportb(PortAddress,Data)	outb(Data,PortAddress)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

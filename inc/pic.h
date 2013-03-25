@@ -11,6 +11,10 @@
 *
 * (c) Copyright 2002-2003, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include	<dpmi.h>
 
 #define	PIC_PIC1IOBASE		0x20			// base address of primary PIC
@@ -34,5 +38,9 @@ typedef struct	IRQ_S
 
 	int				irqCount;		  		// Incremented when IRQ routine executed.
 } Irq_s;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
