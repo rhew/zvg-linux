@@ -6,183 +6,68 @@
 *
 * History:
 *
-* (c) Copyright 2002-2004, Zektor, LLC.  All Rights Reserved.
+* 100623 Updated by Steve Johnson for Windows
+*
+* (c) Copyright 2002-2010, Zektor, LLC.  All Rights Reserved.
 *****************************************************************************/
-#ifdef WIN32
-	#include <windows.h>
-	#include <winbase.h>
-
-	#include "wrappers.h"
-
-	#include <time.h>
-
-#elif defined(linux)
-	#include <stdlib.h>
-	#include <stdio.h>
-	#include <time.h>
-	#include <sys/io.h>
-	#include "wrappers.h"
-
-#else // DOS
-	#include	<go32.h>
-	#include	<pc.h>
-	#include	<sys\farptr.h>
-#endif
-
-#include	"zstddef.h"
+#include	<time.h> //SCJ: for LINUX equivalent of Windows HRT.
 #include	"timer.h"
 
-#define	io8254		0x40			// address of the 8254
-#define	BIOS_CLOCK	0x046C			// real address of the BIOS clock ticks
+static long long int	frameZeroTime, ticksInFrame, ticksPerMs, frequency;
+static unsigned int		frameCount = 0;
 
-uint			TmrFrameCounter;			// increment for each frame
-static Timer_t	TmrFrameTicks, TmrFrameClock;
-
-/*****************************************************************************
-* Initialize timer routines, must be called before timers will work properly.
-*
-* Initialize 8254 to mode 2 instead of mode 3.  This should only be	     
-* called once, and can cause a one time error, in the real-time clock, of    
-* no more than 55ms.  Except for the above single time error, this routine   
-* does not effect the real-time clock.
-*
-* Overview:
-*
-* The 8254 is supplied by with a (14.31818mhz / 12 = 1193181.667hz) clock.   
-*
-* The BIOS uses mode 3 with a count of 0000h, when programming the the 8254
-* which results in a square wave with a count of 65536.  This causes the
-* 8254 to decrement by 2 each clock time, which is how the count is really
-* the cylce time of the full square wave.
-*
-* This routine re-initializes the 8254 to mode 2 with a count of 0000h.
-* This causes the 8254 to decrement by 1 each clock time, with a single
-* pulse at the zero count to signal the 8259.  The time between pulses is
-* the same as the time of the square wave, so nothing is changed in
-* real-time clock accuracy.
-*
-* Since the 8254 is re-initialized, up to 55ms of time can be lost.
-*
-* Since this routine is called from the protected mode, a selector is
-* needed to access the BIOS timer information.  A flag indicates whether
-* the selector is present to prevent GPF's from occuring.
-*
-* Called with:
-*    NONE
-*
-* Returns:
-*    NONE
-*****************************************************************************/
-void tmrInit( void)
+/******************************************************
+ *  We still need an init function to set the frequency
+ ******************************************************/
+int tmrInit(void)
 {
-	uint	mode;
+	// LINUX timer is in nanoseconds (1/1000 ms)
 
-	// Initialize the 8254 timer
+	ticksPerMs = (long long int)1000;	 // ticks per millisecond
+	frequency  = (long long int)1000000000; // ticks per second
 
-#if defined(WIN32)
-#elif defined(linux)
-
-#if 0
-	if (ioperm(io8254,4,1)) {
-//		printf("[zvgInit] Sorry, port 0x%04x access DENIED. ************"
-//				"\n\troot privilage required\n", io8254);
-//		return( errIOPermFail);
-	}
-
-
-	outportb( io8254+3, 0xE2);			// setup for reading mode
-	mode = inportb( io8254);			// read mode
-	mode &= 0x0E;						// get only mode bits
-
-	// check if already in MODE 2
-
-	if (mode != 0x04)
-	{
-		// if not in mode 2, set it
-
-		outportb( io8254+3, 0x34);		// set to MODE 2
-		outportb( io8254, 0x00);		// reset counter to max count
-		outportb( io8254, 0x00);
-	}
-#endif // 0
-
-#else // DOS
-
-	outportb( io8254+3, 0xE2);			// setup for reading mode
-	mode = inportb( io8254);			// read mode
-	mode &= 0x0E;						// get only mode bits
-
-	// check if already in MODE 2
-
-	if (mode != 0x04)
-	{
-		// if not in mode 2, set it
-
-		outportb( io8254+3, 0x34);		// set to MODE 2
-		outportb( io8254, 0x00);		// reset counter to max count
-		outportb( io8254, 0x00);
-	}
-#endif
+	return 1;
 }
 
-/*****************************************************************************
-* Restore the 8254 timer to mode 3.
-*
-* Sets the 8254 back to it's original DOS programming mode.
-* ZVG Timer routines will stop functioning properly after this call.
-*
-* Called with:
-*    NONE
-*
-* Returns:
-*    NONE
-*****************************************************************************/
-void tmrRestore( void)
+
+/******************************************************
+ *  This simply reads the High-Performance timer
+ *	Needs to be passed a reference to a 64 bit integer (long long int)
+ *	Return value is boolean success/failure
+ ******************************************************/
+
+long long int tmrReadTimer(void)
 {
-#if defined(WIN32)
-#elif defined(linux)
-#else // DOS
-	uint	mode;
+	long long int thetime;
+	struct timespec time_now;
 
-	// Restore the 8254 timer
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_now);
 
-	outportb( io8254+3, 0xE2);			// setup for reading mode
-	mode = inportb( io8254);			// read mode
-	mode &= 0x0E;							// get only mode bits
+	thetime = (long long int)((time_now.tv_sec * frequency) + (time_now.tv_nsec));
 
-	// check if already in MODE 3
-
-	if (mode != 0x03)
-	{
-		// if not in mode 3, set it
-
-		outportb( io8254+3, 0x36);		// set to MODE 3
-		outportb( io8254, 0x00);		// reset counter to max count
-		outportb( io8254, 0x00);
-	}
-#endif
+	return thetime;
 }
 
-/*****************************************************************************
-* Set frame rate.
-*
-* This frame rate timer is a special time that times out once a framerate.
-* This routine is called with the desired frames per second.  After this
-* routine is called, subsequent calls to 'tmrTestFrame()', or 'tmrWaitFrame()'
-* can be called to check for end of frame timing.
-*
-* Called with:
-*    rate = Frame rate in frames per second.
-*****************************************************************************/
-void tmrSetFrameRate( int fps)
+/******************************************************
+ *  This sets several variables:
+ *		- ticksInFrame: number of clock ticks in a frame
+ *		- frameZeroTime: the datum for computing number
+ *			of frames, based on clock ticks
+ *		- ticksPerMs: number of ticks in a millisecond
+ *
+ *	parameters: int frames per second
+ *	return value: boolean success/failure
+ ******************************************************/
+void tmrSetFrameRate(int fps)
 {
 	if (fps == 0)
-		fps = 1;								// if zero, set to one for error
+		fps = 1;	// if zero, set to one for error
 
 	// calculate the number of ticks needed for given frame rate
+	//		o ticks in a frame = freq / fps
 
-	TmrFrameTicks = (TICK_RATE1000 / fps) / 1000;
-	TmrFrameClock = tmrRead();			// reset the framerate clock
+	ticksInFrame = frequency / (long long int)fps;
+	frameZeroTime = tmrReadTimer();
 }
 
 /*****************************************************************************
@@ -203,21 +88,21 @@ void tmrSetFrameRate( int fps)
 * Returns with:
 *    0 = Not end of frame. If not zero, then returns frames skipped.
 *****************************************************************************/
-uint tmrTestFrame( void)
+unsigned int tmrNumberFramesSkipped(void)
 {
-	Timer_t	timer;
-	uint		frame;
+	long long int	timer = 0;
+	unsigned int 	frame;
 
-	frame = TmrFrameCounter;				// get current frame count
-	timer = tmrRead();						// read current time
+	frame = frameCount;	// save the current Frame Count
+	timer = tmrReadTimer();	// read current time
 
-	// Calculate number of frames that have passed
-
-	while ((timer - TmrFrameClock) >= TmrFrameTicks)
-	{	TmrFrameCounter++;					// increment frame counter
-		TmrFrameClock += TmrFrameTicks;	// reset framerate clock
+	// Calculate the number of frames that have passed
+	while ((timer - frameZeroTime) >= ticksInFrame)
+	{
+		frameCount++;					// we passed a frame boundary
+		frameZeroTime += ticksInFrame;  // add a frame width to the datum
 	}
-	return (TmrFrameCounter - frame);	// return number of frames that have passed
+	return (frameCount - frame);		// return the # frames passed since last call
 }
 
 /*****************************************************************************
@@ -231,25 +116,71 @@ uint tmrTestFrame( void)
 * Returns with:
 *    Number of frames that have passed since last called.
 *****************************************************************************/
-uint tmrWaitFrame( void)
+unsigned int tmrWaitForFrame(void)
 {
-	uint	frames;
+	unsigned int	frames = 0;
 
-	while ((frames = tmrTestFrame()) == 0)
+	while ((frames = tmrNumberFramesSkipped()) == 0)
 		;
 
 	return (frames);
 }
 
-#if 0 	// replaced with #define for speed
 /*****************************************************************************
-* Read the frame counter
+* Simple Accessor.  Gets the number of ticks in a frame.
+*
 *****************************************************************************/
-uint	tmrReadFramesCount( void)
+long long int tmrGetTicksInFrame()
 {
-	return (TmrFrameCounter);
+	return ticksInFrame;
 }
-#endif
+
+/*****************************************************************************
+* Test a timer using HP Timer ticks.
+*
+* Returns a non-zero value when 'ticks' number of HP Timer ticks have passed
+* since the given timer value was read.
+*
+* Called with:
+*    timer = Timer value obtained by a previous call to 'tmrReadTimer()'.
+*    ticks = Number of 8254 ticks to test for.
+*
+* Returns with:
+*    0 if timer has not timed out, not zero indicates timer has timed out.
+*****************************************************************************/
+int tmrTestTicks( long long int timer, int ticks)
+{
+	//long long int timeNow = 0;
+
+	if ((tmrReadTimer() - timer) < (long long int)ticks)
+		return 0;
+
+	return 1;
+}
+
+/*****************************************************************************
+* Test a timer using milliseconds.
+*
+* Returns a non-zero value when 'ms' number of milliseconds have passed
+* since the given timer value was read.
+*
+* Called with:
+*    timer = Timer value obtained by a previous call to 'tmrReadTimer()'.
+*    ms    = Number of milliseconds to test for.
+*
+* Returns with:
+*    0 if timer has not timed out, not zero indicates timer has timed out.
+*****************************************************************************/
+int tmrTestMillis( long long int timer, int ms)
+{
+	long long int timeNow = 0;
+	timeNow = tmrReadTimer();
+
+	if ((timeNow - timer) < ((long long int)ms * ticksPerMs))
+		return 0;
+	else
+	return 1;
+}
 
 /*****************************************************************************
 * Test to see if a number of frames have passed.
@@ -268,113 +199,10 @@ uint	tmrReadFramesCount( void)
 *    TRUE  - if number of 'frames' have passed since 'frameCount' was read.
 *    FALSE - if number of 'frames' have not yet passed.
 *****************************************************************************/
-bool	tmrTestFrameCount( uint frameCount, uint frames)
+int	tmrTestFrameCount( unsigned int newFrameCount, unsigned int frames)
 {
-	if (TmrFrameCounter - frameCount < frames)
-		return (zFalse);
+	if (frameCount - newFrameCount < frames)
+		return 0;
 
-	return (zTrue);
+	return 1;
 }
-
-/*****************************************************************************
-* Read a timer.
-*
-* Reads a high resolution timer.  Used to start a background timer.
-*
-* Called with:
-*    NONE
-*
-* Returns with:
-*    Timer Ticks
-*****************************************************************************/
-Timer_t tmrRead( void)
-{
-#if defined(WIN32) || defined(linux)
-
-	clock_t	biosTicks, oBiosTicks;
-
-	biosTicks = clock();
-
-	do {
-		oBiosTicks = biosTicks;						// Remember current ticks.
-		biosTicks = clock();						// Re-read BIOS ticks.
-	} while (oBiosTicks != biosTicks);				// If different, IRQ occurred, try again.
-
-	return ((biosTicks << 16) /*+ lsb*/);				// Return full 32 bit timer count.
-
-#else // DOS
-
-	uint	lsb, msb;
-	uint	biosTicks, oBiosTicks;
-
-	biosTicks = _farpeekw( _dos_ds, BIOS_CLOCK);	// Get BIOS ticks.
-
-	// If BIOS ticks changes during a read, then a timer interrupt
-	// occured and we must re-read the 8254 to be in sync
-
-	do
-	{	oBiosTicks = biosTicks;						// Remember current ticks.
-		outportb( io8254+3, 0);						// Latch timer 0.
-		lsb = inportb( io8254);						// Get LSB.
-		msb = inportb( io8254);						// Get MSB.
-		biosTicks = _farpeekw( _dos_ds, BIOS_CLOCK);// Re-read BIOS ticks.
-	} while (oBiosTicks != biosTicks);				// If different, IRQ occurred, try again.
-
-	lsb += msb << 8;								// Get full 16 bit count.
-	lsb--;											// Convert '[1]0000h thru 0001h'
-													// to 'FFFFh thru 0000h'.
-	lsb = -lsb;										// Count upwards instead of downwards.
-
-	return ((biosTicks << 16) + lsb);				// Return full 32 bit timer count.
-
-#endif
-}
-
-/*****************************************************************************
-* Test a timer using 8254 ticks.
-*
-* Returns a non-zero value when 'ticks' number of 8254 ticks have passed
-* since the given timer value was read.
-*
-* There are	1,193,181.667 8254 ticks in a second.
-*
-* Called with:
-*    timer = Timer value obtained by a previous call to 'tmrRead()'.
-*    ticks = Number of 8254 ticks to test for.
-*
-* Returns with:
-*    0 if timer has not timed out, not zero indicates timer has timed out.
-*****************************************************************************/
-bool tmrTestTicks( Timer_t timer, Timer_t ticks)
-{
-	// if time passed is less than number of ticks, then return 0
-
-	if ((tmrRead() - timer) < ticks)
-		return (zFalse);
-
-	return (zTrue);
-}
-
-/*****************************************************************************
-* Test a timer using milliseconds.
-*
-* Returns a non-zero value when 'ms' number of milliseconds have passed
-* since the given timer value was read.
-*
-* Called with:
-*    timer = Timer value obtained by a previous call to 'tmrRead()'.
-*    ms    = Number of milliseconds to test for.
-*
-* Returns with:
-*    0 if timer has not timed out, not zero indicates timer has timed out.
-*****************************************************************************/
-bool tmrTestms( Timer_t timer, ulong ms)
-{
-	// if time passed is less than number of ticks, then return 0
-
-	if ((tmrRead() - timer) < (ms * TICKS_PER_MS))
-		return (zFalse);
-
-	return (zTrue);
-}
-

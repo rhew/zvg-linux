@@ -38,5 +38,6 @@ The ZVG Software Development Kit is hosted on GitHub by permission of Zonn Moore
 ## Credits
 
 - Zonn Moore wrote the [ZVG Software Development Kit 1.1a](http://www.zektor.com/zvg/downloads/zvg_sdk11a.zip) for DOS.
-- Brent Jarvis ported the source to Linux, excluding DMA support.
+- Brent Jarvis ported the source to Linux, excluding DMA support. Although much of it isn't used in the current version of this library, it is the inspiration.
+- Chad Gray also ported the source to Linux. This is the source of the current version of this library.
 - James Rhew packaged and currently maintains the source on GitHub.

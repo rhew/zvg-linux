@@ -25,10 +25,10 @@
 #endif // OS
 
 #include	"zstddef.h"
-#include	"zvgport.h"
-#include	"zvgenc.h"
+#include	"zvgPort.h"
+#include	"zvgEnc.h"
 #include	"timer.h"
-#include	"zvgframe.h"
+#include	"zvgFrame.h"
 
 #define	RANDLOGO					// let the DEMO logo randomly drift, else move it with keyboard
 
@@ -373,7 +373,7 @@ int main( void)
 
 		// wait for next frame time
 
-		tmrWaitFrame();
+		tmrWaitForFrame();
 
 		// send next frame
 

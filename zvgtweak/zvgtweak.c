@@ -40,8 +40,8 @@
 	#include	<sys\segments.h>
 #endif // OS
 
-#include	"zvgframe.h"
-#include	"zvgcmds.h"
+#include	"zvgFrame.h"
+#include	"zvgCmds.h"
 
 // For DEBUG_WITHOUT_ZEKTOR_DRIVER to work, also need to exclude the zekShr
 // library from the link. 
@@ -96,7 +96,7 @@
 	#define zvgError				yError
 	#define zvgFrameVector			yFrameVector
 	#define tmrSetFrameRate			ytmrSetFrameRate
-	#define tmrWaitFrame			ytmrWaitFrame
+	#define tmrWaitForFrame			ytmrWaitForFrame
 	#define zvgBanner				yBanner
 
 	static uint yFrameOpen( void );
@@ -110,7 +110,7 @@
 	static void	yError( uint err);
 	static uint yFrameVector( int xStart, int yStart, int xEnd, int yEnd);
 	static void	ytmrSetFrameRate( int fps);
-	static uint ytmrWaitFrame();
+	static uint ytmrWaitForFrame();
 	static void yBanner( ZvgSpeeds_a, ZvgID_s *);
 
 //	ZvgID_s		ZvgID;
@@ -817,7 +817,7 @@ int main( int argc, char *argv[])
 
 		// wait for start of next frame
 
-		tmrWaitFrame();
+		tmrWaitForFrame();
 
 		err = zvgFrameSend();				// send frame of DMA and swap buffers
 
@@ -882,7 +882,7 @@ static void	yError( uint err)					{ return; }
 static uint yFrameVector( int xStart, int yStart, int xEnd, int yEnd)
 												{ return errOk; }
 static void	ytmrSetFrameRate( int fps)			{ return; }
-static uint ytmrWaitFrame()						{ return 1; }
+static uint ytmrWaitForFrame()					{ return 1; }
 static void yBanner( ZvgSpeeds_a speeds, ZvgID_s *id)
 												{ return; }
 
